@@ -1,0 +1,54 @@
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+line-length = 120
+target-version = "py37"
+show-fixes = true
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "B",
+    "BLE",
+    "C4",
+    "EM",
+    "ERA",
+    "F",
+    "FA",
+    "FIX",
+    "G",
+    "I",
+    "ICN",
+    "INP",
+    "ISC",
+    "N",
+    "NPY",
+    "PERF",
+    "PGH",
+    "PIE",
+    "PL",
+    "PT",
+    "PTH",
+    "PYI",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "SIM",
+    "SLF",
+    "SLOT",
+    "T20",
+    "TCH",
+    "TD",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+]
+ignore = [
+    "TD003", # Missing issue link on the line following this TODO.
+    "FIX001", # Line contains FIXME, consider resolving the issue.
+    "FIX002", # Line contains TODO, consider resolving the issue.
+]
