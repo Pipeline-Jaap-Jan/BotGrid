@@ -23,7 +23,9 @@ shotgrid_connection = shotgun.Shotgun(
     api_key=os.getenv("SHOTGRID_API_KEY")
 )
 
-
+#=============================================================
+"""LET OP WERKT NIET GEBRUIK v27"""
+#=============================================================
 
 
 class Throttler:
@@ -132,11 +134,6 @@ def get_assigned_users_from_tasks(shot_id):
 
     return assigned_users, shot_name, sequence_name, project_name
 
-
-
-
-
-
 def get_assigned_users_from_asset_tasks(asset_id):
     """Query ShotGrid for all tasks associated with an asset and return assigned users' email addresses,
     along with asset and project names."""
@@ -176,6 +173,43 @@ def get_assigned_users_from_asset_tasks(asset_id):
                     assigned_users[pipeline_step].append(user_email)
 
     return assigned_users, asset_name, project_name
+
+
+
+def get_assigned_users_from_version_tasks(version_id):
+    """Query ShotGrid for all tasks associated with a version, find the linked shot, 
+    and return assigned users' email addresses, along with version and project names."""
+    
+    version_details = shotgrid_connection.find_one(
+        "Version",
+        [["id", "is", version_id]],
+        ["code", "project.Project.name", "sg_shot.Shot.code"]
+    )
+
+    if not version_details:
+        logging.error(f"Could not retrieve version details for Version ID: {version_id}")
+        return None, None, None
+
+    version_name = version_details.get("code", "Unknown Version")
+    project_name = version_details.get("project.Project.name", "Unknown Project")
+    
+    shot_id = version_details.get("sg_shot.Shot.code")
+    
+    if not shot_id:
+        logging.warning(f"No shot linked to Version ID: {version_id}")
+        return {}, version_name, project_name
+
+    assigned_users_by_step, shot_name, sequence_name, project_name = get_assigned_users_from_tasks(shot_id)
+    
+    if not assigned_users_by_step:
+        logging.warning(f"No assigned users found for Shot ID: {shot_id}")
+        return {}, version_name, project_name
+
+    return assigned_users_by_step, version_name, project_name
+
+
+
+
 
 
 def get_attachments_ids_from_note_id(node_id: int) -> list:
@@ -345,7 +379,6 @@ def handle_shot_event(event_data):
 
 
 
-
 def handle_note_event(event_data):
     """Process Note-related events."""
     note_id = event_data.get('meta', {}).get('entity_id')
@@ -410,9 +443,41 @@ def handle_note_event(event_data):
             logging.warning(f"No assigned users found for linked Asset ID: {linked_entity_id}")
             return 'No assigned users found for linked Asset', 404
 
+    elif linked_entity_type == "Version":
+        assigned_users_by_step, version_name, project_name = get_assigned_users_from_version_tasks(linked_entity_id)
+        if assigned_users_by_step:
+            for step, users in assigned_users_by_step.items():
+                send_message_to_assigned_users({step: users}, version_name, "N/A", project_name, message_content)
+            return 'success', 200
+        else:
+            logging.warning(f"No assigned users found for linked Version ID: {linked_entity_id}")
+            return 'No assigned users found for linked Version', 404
+
+    elif linked_entity_type == "Note, Shotgun_Note_Change":
+        assigned_users_by_step, version_name, project_name = get_assigned_users_from_version_tasks(linked_entity_id)
+        if assigned_users_by_step:
+            for step, users in assigned_users_by_step.items():
+                send_message_to_assigned_users({step: users}, version_name, "N/A", project_name, message_content)
+            return 'success', 200
+        else:
+            logging.warning(f"No assigned users found for linked Version ID: {linked_entity_id}")
+            return 'No assigned users found for linked Version', 404
+        
+    elif linked_entity_type == "Playlist":
+        assigned_users_by_step, version_name, project_name = get_assigned_users_from_version_tasks(linked_entity_id)
+        if assigned_users_by_step:
+            for step, users in assigned_users_by_step.items():
+                send_message_to_assigned_users({step: users}, version_name, "N/A", project_name, message_content)
+            return 'success', 200
+        else:
+            logging.warning(f"No assigned users found for linked Version ID: {linked_entity_id}")
+            return 'No assigned users found for linked Version', 404
+        
     else:
         logging.warning(f"Unsupported linked entity type: {linked_entity_type} for Note ID: {note_id}")
         return 'Unsupported linked entity type', 400
+
+    
 
 
 
